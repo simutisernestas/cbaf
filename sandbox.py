@@ -47,7 +47,7 @@ csvfile = open('eggs.csv', 'w', newline='')
 spamwriter = csv.writer(csvfile, delimiter=',',
                         quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
-month = 60*60*24*30
+month = 60*60*24*365
 back = 60*300
 started = int(time.time())
 end_stamp = int(time.time())
