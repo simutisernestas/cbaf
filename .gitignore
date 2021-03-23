@@ -1,2 +1,5 @@
 sand
 *.csv
+**/__pycache__
+models
+*.npy

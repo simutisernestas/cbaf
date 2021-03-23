@@ -1,0 +1,8 @@
+https://github.com/binli826/LSTM-Autoencoders
+https://towardsdatascience.com/autoencoders-for-the-compression-of-stock-market-data-28e8c1a2da3e
+https://github.com/tejaslodaya/timeseries-clustering-vae
+
+# TODO:
+ * sample more sequences by random start indexes
+ * reduce low-high & open-close columns into single by subtracting them
+ 
