@@ -2,7 +2,15 @@ https://github.com/binli826/LSTM-Autoencoders
 https://towardsdatascience.com/autoencoders-for-the-compression-of-stock-market-data-28e8c1a2da3e
 https://github.com/tejaslodaya/timeseries-clustering-vae
 
-# TODO:
+# DONE:
  * sample more sequences by random start indexes
  * reduce low-high & open-close columns into single by subtracting them
- 
+ * try removing kl-loss? - doesn't affect too much
+
+# TODO:
+ * model naming by parameters used
+ * make validation dateset
+ * explore coinbase database for more data
+ * read more about kl-divergence loss
+ * next step ???
+ * binance has a lot more data, collect that
