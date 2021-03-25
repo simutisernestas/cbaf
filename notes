@@ -1,6 +1,8 @@
 https://github.com/binli826/LSTM-Autoencoders
 https://towardsdatascience.com/autoencoders-for-the-compression-of-stock-market-data-28e8c1a2da3e
 https://github.com/tejaslodaya/timeseries-clustering-vae
+https://github.com/jjakimoto/DQN
+https://github.com/openai/baselines/tree/master/baselines/ppo2 
 
 # DONE:
  * sample more sequences by random start indexes
@@ -18,6 +20,8 @@ https://github.com/tejaslodaya/timeseries-clustering-vae
    - https://stackoverflow.com/questions/38810390/cannot-create-dataframe-from-list-pyspark
  * reward must be approapriate to action taken
  * compare previous high to next low
+ * research RL approaches
+ * research that DQN link
 
 pip install tox
 tox
