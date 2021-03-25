@@ -14,3 +14,10 @@ https://github.com/tejaslodaya/timeseries-clustering-vae
  * read more about kl-divergence loss
  * next step ???
  * binance has a lot more data, collect that
+ * spark doesn't take numpy floats, conver all types of DF to python floats
+   - https://stackoverflow.com/questions/38810390/cannot-create-dataframe-from-list-pyspark
+ * reward must be approapriate to action taken
+ * compare previous high to next low
+
+pip install tox
+tox

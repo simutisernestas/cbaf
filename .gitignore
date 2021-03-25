@@ -3,3 +3,4 @@ sand
 **/__pycache__
 models
 *.npy
+*.pkl
