@@ -8,6 +8,10 @@ https://github.com/openai/baselines/tree/master/baselines/ppo2
  * sample more sequences by random start indexes
  * reduce low-high & open-close columns into single by subtracting them
  * try removing kl-loss? - doesn't affect too much
+ * episode ends when losses drop below a threshold ~5%
+ * rework reward to be expressed as profit
+ * make the encoded vector much much smaller (20*6 < 512)
+ * compare previous high to next low
 
 # TODO:
  * model naming by parameters used
@@ -19,13 +23,6 @@ https://github.com/openai/baselines/tree/master/baselines/ppo2
  * spark doesn't take numpy floats, conver all types of DF to python floats
    - https://stackoverflow.com/questions/38810390/cannot-create-dataframe-from-list-pyspark
  * reward must be approapriate to action taken
- * compare previous high to next low
  * research RL approaches
  * research that DQN link
  * add live data to RL step function along side the encoded vector
- * make the encoded vector much much smaller (20*6 < 512)
- * rework reward to be expressed as profit
- * episode ends when losses drop below a threshold ~5%
-
-pip install tox
-tox

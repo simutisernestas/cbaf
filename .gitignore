@@ -4,3 +4,4 @@ sand
 models
 *.npy
 *.pkl
+**.egg-info
