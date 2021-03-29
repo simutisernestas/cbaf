@@ -20,9 +20,9 @@ class AutoEncoder(nn.Module):
         super().__init__()
         self.code_size = code_size
 
-        self.enc_cnn_1 = nn.Conv1d(5, 10, kernel_size=3)
-        self.enc_cnn_2 = nn.Conv1d(10, 20, kernel_size=3)
-        self.enc_linear_1 = nn.Linear(920, 50)
+        self.enc_cnn_1 = nn.Conv1d(5, 32, kernel_size=3)
+        self.enc_cnn_2 = nn.Conv1d(32, 64, kernel_size=3)
+        self.enc_linear_1 = nn.Linear(2944, 50)
         self.enc_linear_2 = nn.Linear(50, self.code_size)
 
         self.dec_linear_1 = nn.Linear(self.code_size, 160)
@@ -88,11 +88,6 @@ if __name__ == '__main__':
     # normalize
     min_points, max_points = np.min(data, axis=0), np.max(data, axis=0)
     data = (data - min_points) / (max_points - min_points)
-    # split into equal sequences
-    # total_rows = data.shape[0]
-    # PARTS = int(total_rows / SEQUENCE)
-    # missing = (data.shape[0]) % PARTS
-    # splits = np.array(np.array_split(data[missing:], PARTS))
     
     # window
     splits = np.array([np.array(data[i:i+SEQUENCE])
@@ -154,34 +149,3 @@ if __name__ == '__main__':
         
     plt.legend()
     plt.show()
-    # print(test_reconst)
-
-    # exit()
-
-    # # Load data
-    # train_data = datasets.MNIST(
-    #     '~/data/mnist/', train=True, transform=transforms.ToTensor())
-    # test_data = datasets.MNIST(
-    #     '~/data/mnist/', train=False, transform=transforms.ToTensor())
-
-    # # Training loop
-    # for epoch in range(num_epochs):
-    #     print("Epoch %d" % epoch)
-
-    #     for i, (images, _) in enumerate(train_loader):    # Ignore image labels
-    #         out, code = autoencoder(Variable(images))
-
-    #         optimizer.zero_grad()
-    #         loss = loss_fn(out, images)
-    #         loss.backward()
-    #         optimizer.step()
-
-    #     print("Loss = %.3f" % loss.data[0])
-
-    # # Try reconstructing on test data
-    # test_image = random.choice(test_data)
-    # test_image = Variable(test_image.view([1, 1, IMAGE_WIDTH, IMAGE_HEIGHT]))
-    # test_reconst, _ = autoencoder(test_image)
-
-    # torchvision.utils.save_image(test_image.data, 'orig.png')
-    # torchvision.utils.save_image(test_reconst.data, 'reconst.png')

@@ -4,6 +4,11 @@ https://github.com/tejaslodaya/timeseries-clustering-vae
 https://github.com/jjakimoto/DQN
 https://github.com/openai/baselines/tree/master/baselines/ppo2 
 
+# COMMANDS:
+python -m baselines.run --alg=ppo2 --env=gym_portfolio:asset-v0 --num_timesteps=2e7 --save_path=~/models/asset_20M_ppo2 --log_path=~/logs/Asset/
+python -m baselines.run --alg=ppo2 --env=gym_portfolio:asset-v0 --num_timesteps=1e7 --load_path=~/models/asset_20M_ppo2 --log_path=~/logs/Asset/
+python -m baselines.run --alg=ppo2 --env=gym_portfolio:asset-v0 --num_timesteps=0   --load_path=~/models/asset_20M_ppo2 --play
+
 # DONE:
  * sample more sequences by random start indexes
  * reduce low-high & open-close columns into single by subtracting them
@@ -12,17 +17,16 @@ https://github.com/openai/baselines/tree/master/baselines/ppo2
  * rework reward to be expressed as profit
  * make the encoded vector much much smaller (20*6 < 512)
  * compare previous high to next low
+ * explore coinbase database for more data (THAT's all)
+ * model naming by parameters used
 
 # TODO:
- * model naming by parameters used
- * make validation dateset
- * explore coinbase database for more data
- * read more about kl-divergence loss
- * next step ???
  * binance has a lot more data, collect that
- * spark doesn't take numpy floats, conver all types of DF to python floats
-   - https://stackoverflow.com/questions/38810390/cannot-create-dataframe-from-list-pyspark
- * reward must be approapriate to action taken
  * research RL approaches
  * research that DQN link
  * add live data to RL step function along side the encoded vector
+ * validation set for AE
+ * validation set for RL
+ * extensive testing of RL environment
+ * separating the future step might be a good idea
+ * add current state in observation also

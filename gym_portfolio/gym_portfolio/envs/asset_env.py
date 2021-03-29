@@ -3,13 +3,13 @@ import gym
 from gym import spaces
 import pandas as pd
 import numpy as np
+from enum import Enum
 
-INITIAL_ACCOUNT_BALANCE = 1000
-MAX_ACTION_SIZE = INITIAL_ACCOUNT_BALANCE * 0.1
+INITIAL_ACCOUNT_BALANCE = 0.001
+MAX_ACTION_SIZE_FROM_NET = 0.1
 MIN_EP_LEN = 60
-MAX_EP_LEN = 180
-HOLD_EPSILON = MAX_ACTION_SIZE * 0.01
-
+MAX_EP_LEN = 60*3
+HOLD_EPSILON = 0.075
 
 class AssetEnv(gym.Env):
     metadata = {'render.modes': ['human']}
@@ -23,28 +23,21 @@ class AssetEnv(gym.Env):
         self.row_count = len(self.df.index)
 
         his_feature_len = self.df['state_features'][self.current_step] \
-            .shape[0]
+            .reshape((-1,)).shape[0]
         resent_steps_len = self.df['last_n'][self.current_step][:-1] \
-            .reshape((-1)).shape[0]
+            .reshape((-1,)).shape[0]
 
         self.observation_space = spaces.Box(
             -np.inf, np.inf,
-            shape=(his_feature_len+resent_steps_len,),
+            shape=((his_feature_len+resent_steps_len,)),
             dtype=np.float32)
-        self.action_space = spaces.Box(-MAX_ACTION_SIZE, MAX_ACTION_SIZE, (1,))
+        self.action_space = spaces.Box(-1, 1, (1,))
         # self.action_space = spaces.Tuple( # TODO
         #     (spaces.Discrete(3), spaces.Box(0, MAX_ACTION_SIZE, (1,))))
         self.reward_range = (-np.inf, np.inf)
 
     def _next_observation(self):
-        # TODO solve hardcoding
-        min_points = np.array(
-            [5.27600e+03, 5.28999e+03, 5.27601e+03, 5.27600e+03, 4.00000e-08]),
-        max_points = np.array(
-            [50720.01, 50776.82, 50755., 50755., 252.30135761])
-
-        steps_tail = (self.df['last_n'][self.current_step][:-1] - min_points) \
-            / (max_points - min_points).reshape((-1))
+        steps_tail = self.df['last_n'][self.current_step][:-1].reshape(-1)
 
         his_features = self.df['state_features'][self.current_step]
 
@@ -56,31 +49,30 @@ class AssetEnv(gym.Env):
             self.df["last_n"][self.current_step][-1][2],
             self.df["last_n"][self.current_step][-1][3])
 
-        # action_type = action[0]
         action = action[0]
-        # amount = action[1][0]
-        amount = self.net_worth * 0.01
+        amount = abs(self.net_worth * MAX_ACTION_SIZE_FROM_NET * action)
 
         if abs(action) < HOLD_EPSILON:
-            # Hold
+            '''Hold'''
             pass
 
         elif action > 0:
-            # Buy amount % of balance in shares
-            shares_bought = amount / current_price
-            prev_cost = self.cost_basis * self.shares_held
-            paid_amount = shares_bought * current_price
+            '''Buy amount % of balance in shares'''
 
-            self.balance -= paid_amount
+            # Limit buy amount to held balance
+            amount = min(amount, self.balance)
+
+            shares_bought = amount / current_price
+            
+            self.balance -= amount
             self.shares_held += shares_bought
 
-            # TODO think this through
-            self.cost_basis = (prev_cost + paid_amount) / \
-                (self.shares_held + shares_bought)
-
         elif action < 0:
-            # Sell amount % of shares held
+            '''Sell amount % of shares held'''
             shares_sold = amount / current_price
+
+            # Limit sell to held shared only
+            shares_sold = min(shares_sold, self.shares_held)
 
             self.balance += shares_sold * current_price
             self.shares_held -= shares_sold
@@ -97,15 +89,14 @@ class AssetEnv(gym.Env):
         self.current_step += 1
         self.ep_len += 1
 
-        if self.current_step >= (self.row_count) or self.current_step < 0 \
-           or self.ep_len > MAX_EP_LEN:
-            self.current_step = 0
-            return np.zeros((self.observation_space.shape[0],)), \
-                self.net_worth - INITIAL_ACCOUNT_BALANCE, True, {}
-
-        done = (self.net_worth < (INITIAL_ACCOUNT_BALANCE * 0.9))
-
         reward = self.net_worth - INITIAL_ACCOUNT_BALANCE
+
+        if self.current_step >= (self.row_count) or self.current_step < 0 \
+            or self.ep_len > MAX_EP_LEN:
+            self.current_step = 0
+            return np.zeros((self.observation_space.shape[0],)), reward, True, {}
+
+        done = (self.net_worth <= INITIAL_ACCOUNT_BALANCE * 0.5)
 
         obs = self._next_observation()
 
@@ -127,20 +118,25 @@ class AssetEnv(gym.Env):
     def render(self, mode='human', close=False):
         # Render the environment to the screen
         profit = self.net_worth - INITIAL_ACCOUNT_BALANCE
-        print(f'Balance: {self.balance}')
-        print(f'Profit: {profit}')
+        print(f'Balance:\t{self.balance}')
+        print(f'Profit:\t{profit}')
+        print(f'Shared:\t{self.shares_held}')
+        print(f'Basis:\t{self.cost_basis}')
 
 
 if __name__ == '__main__':
     env = AssetEnv()
     env.reset()
-    # print(env._get_reward(env.action_space.sample()))
+    # print(env.action_space.sample())
+    # for i in range(10):
+    #     print(env.step(env.action_space.sample()))
     # print(env._next_observation())
     # print(len(env._next_observation()))
-    # print(env.observation_space.shape[0])
-    for i in range(100000):
+    # print(env.observation_space.shape)
+    for i in range(999999999999):
         action = env.action_space.sample()
         a, b, c, d = env.step(action)
+        print(b)
         if c:
             print(f"done {i} reward {b}")
             break

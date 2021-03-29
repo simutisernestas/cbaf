@@ -24,3 +24,7 @@
 # # x_normed[1,:,4]
 # # X_train[1,:,1]
 # X_train = x_normed
+
+# prev_cost = self.cost_basis * self.shares_held
+# self.cost_basis = (prev_cost + paid_amount) / \
+#     (self.shares_held + shares_bought)

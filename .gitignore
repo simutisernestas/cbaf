@@ -6,3 +6,4 @@ models
 *.pkl
 **.egg-info
 *.pt
+.vscode/
