@@ -7,3 +7,4 @@ models
 **.egg-info
 *.pt
 .vscode/
+junit/
