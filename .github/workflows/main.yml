@@ -32,11 +32,19 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Display Python version
       run: python -c "import sys; print(sys.version)"
+    - name: Cache pip
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          ${{ runner.os }}-
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+    - name: Install gym portfolio
+      run: pip install -e gym_portfolio
     - name: Test with pytest
-      run: |
-        pip install pytest
-        pytest gym_portfolio/tests/test_asset_env.py --doctest-modules --junitxml=junit/test-results.xml
+      run: pytest gym_portfolio/tests/test_asset_env.py --doctest-modules --junitxml=junit/test-results.xml
