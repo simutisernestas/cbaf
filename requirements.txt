@@ -1,6 +1,4 @@
 gym==0.17.3
-random
 numpy
 pandas
-unittest
 pytest
