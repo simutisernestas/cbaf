@@ -30,3 +30,4 @@ python -m baselines.run --alg=ppo2 --env=gym_portfolio:asset-v0 --num_timesteps=
  * extensive testing of RL environment
  * separating the future step might be a good idea
  * add current state in observation also
+ * add fees feature on top of the buy/sell
