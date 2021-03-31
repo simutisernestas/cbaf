@@ -182,7 +182,31 @@ class TestStringMethods(unittest.TestCase):
         self.assertTrue(self.env.net_worth < range_top,
                         f"{self.env.net_worth} < {range_top}")
 
-    # TODO: test_sell_appreciating
+    def test_appreciating_asset_sell_results_in_profit(self):
+        df = self.make_increasing_sequence()
+        self.env._set_df(df)
+        self.env.reset()
+
+        # Buy to possess some asset
+        self.assertEqual(self.env.balance, INITIAL_ACCOUNT_BALANCE)
+        self.env.step([1])
+        self.assertTrue(self.env.net_worth == INITIAL_ACCOUNT_BALANCE,
+                        f"{self.env.net_worth} == {INITIAL_ACCOUNT_BALANCE}")
+        self.env.step([1])
+        self.assertTrue(self.env.net_worth > INITIAL_ACCOUNT_BALANCE,
+                        f"{self.env.net_worth} > {INITIAL_ACCOUNT_BALANCE}")
+
+        net_worth_before_sell = self.env.net_worth
+
+        # Sell increased asset
+        self.env.step([-1])
+        self.env.step([-1])
+
+        # Net worth should increase
+        self.assertTrue(net_worth_before_sell < self.env.net_worth,
+                        f"{net_worth_before_sell} < {self.env.net_worth}")
+
+    # TODO: test_hold
     # TODO: test_sell_depreciating
     # TODO: test_buy_sell_appreciating
     # TODO: test_buy_sell_depreciating
@@ -190,6 +214,7 @@ class TestStringMethods(unittest.TestCase):
     # TODO: test_sell_buy_depreciating
     # TODO: test_sell_buy_sell_maybe
     # TODO: test_buy_sell_buy_maybe
+
 
 if __name__ == '__main__':
     unittest.main()
