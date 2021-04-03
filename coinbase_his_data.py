@@ -53,7 +53,6 @@ started = int(time.time())
 end_stamp = int(time.time())
 start_stamp = int(time.time())-back
 while (started-end_stamp) < month:
-    # print(end_stamp-start_stamp)
     start = datetime.datetime.utcfromtimestamp(start_stamp).isoformat()
     end = datetime.datetime.utcfromtimestamp(end_stamp).isoformat()
     r = requests.get(
@@ -66,8 +65,3 @@ while (started-end_stamp) < month:
     end_stamp = start_stamp
     start_stamp -= back
     time.sleep(0.33333)
-
-
-# print(r.json())
-# if 'BTC' in p['id'] and 'USD' in p['id']:
-    # print(['id'])

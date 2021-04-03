@@ -8,3 +8,4 @@ models
 *.pt
 .vscode/
 junit/
+.pytest_cache

@@ -2,7 +2,7 @@ import unittest
 import gym
 import pandas as pd
 import numpy as np
-from gym_portfolio.envs.asset_env import AssetEnv, AssetHistoryColumns
+from gym_portfolio.envs.asset_env import AssetEnv, AssetColumns
 from gym_portfolio.envs.asset_env import INITIAL_ACCOUNT_BALANCE, MAX_ACTION_SIZE_FROM_NET
 
 # TODO: util for printing df data
@@ -42,7 +42,7 @@ class TestStringMethods(unittest.TestCase):
 
     def make_empty_asset_history_df(self):
         d = {}
-        for c in AssetHistoryColumns:
+        for c in AssetColumns:
             d[c.value] = []
         return pd.DataFrame(data=d)
 

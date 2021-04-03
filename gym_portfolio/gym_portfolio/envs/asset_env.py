@@ -4,69 +4,101 @@ from gym import spaces
 import pandas as pd
 import numpy as np
 from enum import Enum
+import talib
 
-INITIAL_ACCOUNT_BALANCE = 0.001
-MAX_ACTION_SIZE_FROM_NET = 0.1
-MIN_EP_LEN = 60
-MAX_EP_LEN = 60*3
-HOLD_EPSILON = 0.075
+INITIAL_ACCOUNT_BALANCE = 500
+INITIAL_ASSET_AMOUNT = 0
+MAX_ACTION_SIZE_FROM_NET = 1.0
+EP_LEN = 60
+HOLD_EPSILON = 2/3/2  # divide [-1;1] range into three parts
 
 
-class AssetHistoryColumns(Enum):
-    STATE = 'state_features'
-    LAST_N = 'last_n'
+class AssetColumns(Enum):
+    TIMESTAMP = 'timestamp'
+    LOW = 'low'
+    HIGH = 'high'
+    OPEN = 'open'
+    CLOSE = 'close'
+    VOLUME = 'volume'
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self) -> str:
+        return str(self.value)
 
 
 class AssetEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, df=None):
+    def __init__(self, df=None, window=20):
         super(AssetEnv, self).__init__()
-        if df is not None:
-            self._set_df(df)
-        else:
-            self.df = None
-
+        self.window = window
+        if not isinstance(df, pd.DataFrame):
+            df = pd.read_csv('C:\\Users\\simut\\Desktop\\stuff\\code\\coinbase\\eggs.csv', names=[
+                'timestamp', 'low', 'high', 'open', 'close', 'volume'])[::-1].reset_index()
+        self._set_df(df)
         self.action_space = spaces.Box(-1, 1, (1,))
         self.reward_range = (-np.inf, np.inf)
 
     def _set_df(self, df):
-        for c in AssetHistoryColumns:
-            if c.value not in df.columns:
+        for c in AssetColumns:
+            if str(c) not in df.columns:
                 raise RuntimeError(
                     f"{c} column doesn't exist in the dataframe")
 
-        self.current_step = 0
+        df['datetime'] = pd.to_datetime(df['timestamp'], unit='s')
+        df['month'] = df['datetime'].dt.month
+        df['weekday'] = df['datetime'].dt.weekday
+        df['hour'] = df['datetime'].dt.hour
+        df = df.drop(['datetime', 'timestamp', 'index'], 1)
+        df['sma'] = talib.SMA(df['close'], self.window)
+        df['rsi'] = talib.RSI(df['close'], self.window)
+        df['mom'] = talib.MOM(df['close'], self.window)
+        df['bop'] = talib.BOP(df['open'], df['high'], df['low'], df['close'])
+        df['aroonosc'] = talib.AROONOSC(df['high'], df['low'], self.window)
+
+        self.min = df.min()
+        self.max = df.max()
+
         self.df = df
+
         self.row_count = len(self.df.index)
-        if self.row_count < MIN_EP_LEN:
-            raise RuntimeError(f"")
-        his_feature_len = self.df[AssetHistoryColumns.STATE.value][self.current_step] \
-            .reshape((-1,)).shape[0]
-        resent_steps_len = self.df[AssetHistoryColumns.LAST_N.value][self.current_step][:-1] \
-            .reshape((-1,)).shape[0]
+        if self.row_count < EP_LEN:
+            raise RuntimeError(f"not enought rows")
+
+        # add balance, asset_held, net_worth at each timestamp
+        n_features = (len(df.columns) * self.window) + 3
+
         self.observation_space = spaces.Box(
             -np.inf, np.inf,
-            shape=((his_feature_len+resent_steps_len,)),
+            shape=((n_features,)),
             dtype=np.float32)
 
     def _next_observation(self):
-        steps_tail = self.df[AssetHistoryColumns.LAST_N.value][self.current_step][:-1] \
-            .reshape(-1)
-        his_features = self.df[AssetHistoryColumns.STATE.value][self.current_step]
+        features = self.df.loc[self.current_step:self.current_step + self.window]
+        features = (features-self.min)/(self.max-self.min)
+        features = features.to_numpy().reshape(-1)
+        features = np.append(features,
+                             [self.balance, self.shares_held, self.net_worth])
+        # features[54] = np.nan
+        assert any(np.isnan(features)) == False, (features,
+                                                  self.df.loc[self.current_step:self.current_step + self.window], self.current_step)
+        return features
 
-        return np.append(his_features, steps_tail)
+    def _current_asset_price(self):
+        # Gaussian between high and low
+        mean = (self.df[str(AssetColumns.LOW)][self.current_step] +
+                self.df[str(AssetColumns.HIGH)][self.current_step]) / 2
+        sigma = (self.df[str(AssetColumns.HIGH)][self.current_step] -
+                 self.df[str(AssetColumns.LOW)][self.current_step]) / 2 / 3
+        return np.random.normal(mean, sigma, (1,))[0]
 
     def _take_action(self, action):
-        # Set the current price to a random price within the time step
-        mean = (self.df[AssetHistoryColumns.LAST_N.value][self.current_step][-1][0] +
-                self.df[AssetHistoryColumns.LAST_N.value][self.current_step][-1][1]) / 2
-        sigma = (self.df[AssetHistoryColumns.LAST_N.value][self.current_step][-1][1] -
-                self.df[AssetHistoryColumns.LAST_N.value][self.current_step][-1][0]) / 2 / 3
-        current_price = np.random.normal(mean,sigma,(1,))[0]
-
         action = action[0]
         amount = abs(self.net_worth * MAX_ACTION_SIZE_FROM_NET * action)
+
+        price = self._current_asset_price()
 
         if abs(action) < HOLD_EPSILON:
             '''Hold'''
@@ -78,25 +110,22 @@ class AssetEnv(gym.Env):
             # Limit buy amount to held balance
             amount = min(amount, self.balance)
 
-            shares_bought = amount / current_price
+            shares_bought = amount / price
 
             self.balance -= amount
             self.shares_held += shares_bought
 
         elif action < 0:
             '''Sell amount % of shares held'''
-            shares_sold = amount / current_price
+            shares_sold = amount / price
 
             # Limit sell to held shared only
             shares_sold = min(shares_sold, self.shares_held)
 
-            self.balance += shares_sold * current_price
+            self.balance += shares_sold * price
             self.shares_held -= shares_sold
 
-        self.net_worth = self.balance + self.shares_held * current_price
-
-        if self.shares_held == 0:
-            self.cost_basis = 0
+        self.net_worth = self.balance + self.shares_held * price
 
     def step(self, action):
         if self.df is None:
@@ -110,14 +139,13 @@ class AssetEnv(gym.Env):
 
         reward = self.net_worth - INITIAL_ACCOUNT_BALANCE
 
-        if self.current_step >= (self.row_count) or self.current_step < 0 \
-                or self.ep_len > MAX_EP_LEN:
-            self.current_step = 0
-            return np.zeros((self.observation_space.shape[0],)), reward, True, {}
-
-        done = (self.net_worth <= INITIAL_ACCOUNT_BALANCE * 0.5)
-
         obs = self._next_observation()
+
+        if self.current_step >= (self.row_count) or self.current_step < 0 \
+                or self.ep_len > EP_LEN:
+            return obs, reward, True, {}
+
+        done = (self.net_worth <= 0)
 
         return obs, reward, done, {}
 
@@ -127,13 +155,14 @@ class AssetEnv(gym.Env):
 
         # Reset the state of the environment to an initial state
         self.balance = INITIAL_ACCOUNT_BALANCE
-        self.net_worth = INITIAL_ACCOUNT_BALANCE
-        self.shares_held = 0
-        self.cost_basis = 0
+        self.shares_held = INITIAL_ASSET_AMOUNT
         self.ep_len = 0
 
         # Set the current step to a random point within the data frame
-        self.current_step = random.randint(0, self.row_count-MIN_EP_LEN)
+        self.current_step = random.randint(
+            self.window, self.row_count-EP_LEN)
+
+        self.net_worth = self.balance + self.shares_held * self._current_asset_price()
 
         return self._next_observation()
 
@@ -145,23 +174,30 @@ class AssetEnv(gym.Env):
         profit = self.net_worth - INITIAL_ACCOUNT_BALANCE
         print(f'Balance:{self.balance}')
         print(f'Profit:{profit}')
-        print(f'Shared:{self.shares_held}')
-        print(f'Basis:{self.cost_basis}')
+        print(f'Asset:{self.shares_held}\n')
 
 
 if __name__ == '__main__':
-    env = AssetEnv()
+    df = pd.read_csv('C:\\Users\\simut\\Desktop\\stuff\\code\\coinbase\\eggs.csv', names=[
+                     'timestamp', 'low', 'high', 'open', 'close', 'volume'])[::-1].reset_index()
+    df = None
+    env = AssetEnv(df)
     env.reset()
-    # print(env.action_space.sample())
-    # for i in range(10):
-    #     print(env.step(env.action_space.sample()))
-    # print(env._next_observation())
-    # print(len(env._next_observation()))
-    # print(env.observation_space.shape)
-    for i in range(999999999999):
-        action = env.action_space.sample()
-        a, b, c, d = env.step(action)
-        print(b)
-        if c:
-            print(f"done {i} reward {b}")
-            break
+
+    rews = []
+    while True:
+        for i in range(10000):
+            action = env.action_space.sample()
+            a, b, c, d = env.step(action)
+            env.render()
+            rews.append(b)
+            if c:
+                print(f"done {i} reward {b}")
+                # print(env._next_observation())
+                break
+
+        env.reset()
+        break
+    import matplotlib.pyplot as plt
+    plt.plot(rews)
+    plt.show()
