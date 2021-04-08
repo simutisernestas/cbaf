@@ -7,10 +7,10 @@ from enum import Enum
 import talib
 
 INITIAL_ACCOUNT_BALANCE = 500
-INITIAL_ASSET_AMOUNT = 0
+INITIAL_ASSET_AMOUNT = 0.01
 MAX_ACTION_SIZE_FROM_NET = 1.0
-EP_LEN = 60
-HOLD_EPSILON = 2/3/2  # divide [-1;1] range into three parts
+EP_LEN = 60*3
+HOLD_EPSILON = 2.0/3.0/2.0  # 2/3/2  # divide [-1;1] range into three parts
 
 
 class AssetColumns(Enum):
@@ -35,10 +35,10 @@ class AssetEnv(gym.Env):
         super(AssetEnv, self).__init__()
         self.window = window
         if not isinstance(df, pd.DataFrame):
-            df = pd.read_csv('C:\\Users\\simut\\Desktop\\stuff\\code\\coinbase\\eggs.csv', names=[
+            df = pd.read_csv('/home/ernestas/Desktop/stuff/py/cbaf/eggs.csv', names=[
                 'timestamp', 'low', 'high', 'open', 'close', 'volume'])[::-1].reset_index()
         self._set_df(df)
-        self.action_space = spaces.Box(-1, 1, (1,))
+        self.action_space = spaces.Box(-1, 1, (1,), dtype="float32")
         self.reward_range = (-np.inf, np.inf)
 
     def _set_df(self, df):
@@ -76,14 +76,18 @@ class AssetEnv(gym.Env):
             dtype=np.float32)
 
     def _next_observation(self):
-        features = self.df.loc[self.current_step:self.current_step + self.window]
-        features = (features-self.min)/(self.max-self.min)
+        features = self.df.loc[self.current_step -
+                               self.window+1:self.current_step]
+        # features = (features-self.min)/(self.max-self.min)
         features = features.to_numpy().reshape(-1)
         features = np.append(features,
                              [self.balance, self.shares_held, self.net_worth])
-        # features[54] = np.nan
+
+        features = (np.array(features)-np.mean(features))/np.std(features)
+
         assert any(np.isnan(features)) == False, (features,
                                                   self.df.loc[self.current_step:self.current_step + self.window], self.current_step)
+
         return features
 
     def _current_asset_price(self):
@@ -102,7 +106,7 @@ class AssetEnv(gym.Env):
 
         if abs(action) < HOLD_EPSILON:
             '''Hold'''
-            pass
+            self.hold_pen += 0.1
 
         elif action > 0:
             '''Buy amount % of balance in shares'''
@@ -115,6 +119,8 @@ class AssetEnv(gym.Env):
             self.balance -= amount
             self.shares_held += shares_bought
 
+            self.hold_pen = (self.hold_pen+1) * (shares_bought==0)
+
         elif action < 0:
             '''Sell amount % of shares held'''
             shares_sold = amount / price
@@ -124,6 +130,8 @@ class AssetEnv(gym.Env):
 
             self.balance += shares_sold * price
             self.shares_held -= shares_sold
+
+            self.hold_pen = (self.hold_pen+1) * (shares_sold==0)
 
         self.net_worth = self.balance + self.shares_held * price
 
@@ -137,7 +145,10 @@ class AssetEnv(gym.Env):
         self.current_step += 1
         self.ep_len += 1
 
-        reward = self.net_worth - INITIAL_ACCOUNT_BALANCE
+        # TODO: decay of reward with long hold
+        pnl = (self.net_worth - self.entry_net_worth) / self.entry_net_worth
+        # reward = self.net_worth - INITIAL_ACCOUNT_BALANCE
+        reward = pnl - (self.hold_pen/self.window)
 
         obs = self._next_observation()
 
@@ -157,12 +168,14 @@ class AssetEnv(gym.Env):
         self.balance = INITIAL_ACCOUNT_BALANCE
         self.shares_held = INITIAL_ASSET_AMOUNT
         self.ep_len = 0
+        self.hold_pen = 0
 
         # Set the current step to a random point within the data frame
         self.current_step = random.randint(
-            self.window, self.row_count-EP_LEN)
+            self.window*2, self.row_count-EP_LEN)
 
         self.net_worth = self.balance + self.shares_held * self._current_asset_price()
+        self.entry_net_worth = self.net_worth
 
         return self._next_observation()
 
@@ -171,15 +184,15 @@ class AssetEnv(gym.Env):
             raise RuntimeError("No dataframe!")
 
         # Render the environment to the screen
-        profit = self.net_worth - INITIAL_ACCOUNT_BALANCE
+        profit = self.net_worth - self.entry_net_worth
         print(f'Balance:{self.balance}')
         print(f'Profit:{profit}')
         print(f'Asset:{self.shares_held}\n')
 
 
 if __name__ == '__main__':
-    df = pd.read_csv('C:\\Users\\simut\\Desktop\\stuff\\code\\coinbase\\eggs.csv', names=[
-                     'timestamp', 'low', 'high', 'open', 'close', 'volume'])[::-1].reset_index()
+    # df = pd.read_csv('C:\\Users\\simut\\Desktop\\stuff\\code\\coinbase\\eggs.csv', names=[
+    #                  'timestamp', 'low', 'high', 'open', 'close', 'volume'])[::-1].reset_index()
     df = None
     env = AssetEnv(df)
     env.reset()
@@ -193,11 +206,12 @@ if __name__ == '__main__':
             rews.append(b)
             if c:
                 print(f"done {i} reward {b}")
-                # print(env._next_observation())
+                print(env._next_observation().shape)
+                print(env.observation_space.shape)
                 break
 
         env.reset()
         break
-    import matplotlib.pyplot as plt
-    plt.plot(rews)
-    plt.show()
+    # import matplotlib.pyplot as plt
+    # plt.plot(rews)
+    # plt.show()

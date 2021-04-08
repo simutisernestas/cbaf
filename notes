@@ -9,6 +9,8 @@ python -m baselines.run --alg=ppo2 --env=gym_portfolio:asset-v0 --num_timesteps=
 python -m baselines.run --alg=ppo2 --env=gym_portfolio:asset-v0 --num_timesteps=1e7 --load_path=~/models/asset_20M_ppo2 --log_path=~/logs/Asset/
 python -m baselines.run --alg=ppo2 --env=gym_portfolio:asset-v0 --num_timesteps=0   --load_path=~/models/asset_20M_ppo2 --play
 
+python train.py --algo ppo --env gym_portfolio:asset-v0 -n 50000 -optimize --n-trials 1000 --n-jobs 4 --sampler tpe --pruner median
+
 # DONE:
  * sample more sequences by random start indexes
  * reduce low-high & open-close columns into single by subtracting them
